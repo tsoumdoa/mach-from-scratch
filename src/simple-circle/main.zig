@@ -35,6 +35,14 @@ pub fn deinit(app: *App) void {
 pub fn update(app: *App) !bool {
     renderer.update();
 
+    var iter = core.pollEvents();
+    while (iter.next()) |event| {
+        switch (event) {
+            .close => return true,
+            else => {},
+        }
+    }
+
     // update the window title every second
     if (app.title_timer.read() >= 1.0) {
         app.title_timer.reset();

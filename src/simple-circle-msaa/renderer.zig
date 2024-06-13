@@ -37,22 +37,25 @@ var bind_group: *gpu.BindGroup = undefined;
 var primitives_data: PrimitiveRenderData = undefined;
 
 fn createBindGroupLayout() *gpu.BindGroupLayout {
-    const bgle = gpu.BindGroupLayout.Entry.buffer(0, .{ .vertex = true, .fragment = false }, .uniform, true, 0);
     return core.device.createBindGroupLayout(
         &gpu.BindGroupLayout.Descriptor.init(.{
-            .entries = &.{bgle},
+            .entries = &.{gpu.BindGroupLayout.Entry.buffer(
+                0,
+                .{ .vertex = true, .fragment = false },
+                .uniform,
+                true,
+                0,
+            )},
         }),
     );
 }
 
 fn createVertexBuffer(primitive: Primitive) *gpu.Buffer {
-    const vertex_buffer_descriptor = gpu.Buffer.Descriptor{
+    const vertex_buffer = core.device.createBuffer(&gpu.Buffer.Descriptor{
         .size = primitive.vertex_count * @sizeOf(VertexData),
         .usage = .{ .vertex = true, .copy_dst = true },
         .mapped_at_creation = .false,
-    };
-
-    const vertex_buffer = core.device.createBuffer(&vertex_buffer_descriptor);
+    });
     queue.writeBuffer(vertex_buffer, 0, primitive.vertex_data.items[0..]);
 
     return vertex_buffer;
@@ -74,87 +77,67 @@ fn createPipeline(
     shader_module: *gpu.ShaderModule,
     bind_group_layout: *gpu.BindGroupLayout,
 ) *gpu.RenderPipeline {
-    const vertex_attributes = [_]gpu.VertexAttribute{
-        .{ .format = .float32x3, .shader_location = 0, .offset = 0 },
-        .{ .format = .float32x3, .shader_location = 1, .offset = @sizeOf(primitives.F32x3) },
-    };
-
-    const vertex_buffer_layout = gpu.VertexBufferLayout.init(.{
-        .array_stride = @sizeOf(VertexData),
-        .step_mode = .vertex,
-        .attributes = &vertex_attributes,
-    });
-
-    const vertex_pipeline_state = gpu.VertexState.init(.{
-        .module = shader_module,
-        .entry_point = "vertex_main",
-        .buffers = &.{vertex_buffer_layout},
-    });
-
-    const primitive_pipeline_state = gpu.PrimitiveState{
-        .topology = .triangle_list,
-        .front_face = .ccw,
-        .cull_mode = .back,
-    };
-
-    // Fragment Pipeline State
-    const blend = gpu.BlendState{
-        .color = gpu.BlendComponent{
-            .operation = .add,
-            .src_factor = .src_alpha,
-            .dst_factor = .one_minus_src_alpha,
-        },
-        .alpha = gpu.BlendComponent{
-            .operation = .add,
-            .src_factor = .zero,
-            .dst_factor = .one,
-        },
-    };
-    const color_target = gpu.ColorTargetState{
-        .format = core.descriptor.format,
-        .blend = &blend,
-        .write_mask = gpu.ColorWriteMaskFlags.all,
-    };
-    const fragment_pipeline_state = gpu.FragmentState.init(.{
-        .module = shader_module,
-        .entry_point = "frag_main",
-        .targets = &.{color_target},
-    });
-
-    const depth_stencil_state = gpu.DepthStencilState{
-        .format = .depth24_plus,
-        .depth_write_enabled = .true,
-        .depth_compare = .less,
-    };
-    //
-    const multi_sample_state = gpu.MultisampleState{
-        .count = SAMPLE_COUNT,
-        .mask = 0xFFFFFFFF,
-        .alpha_to_coverage_enabled = .false,
-    };
-
-    const bind_group_layouts = [_]*gpu.BindGroupLayout{bind_group_layout};
-    // Pipeline Layout
-    const pipeline_layout_descriptor = gpu.PipelineLayout.Descriptor.init(.{
-        .bind_group_layouts = &bind_group_layouts,
-    });
-    const pipeline_layout = core.device.createPipelineLayout(&pipeline_layout_descriptor);
+    const pipeline_layout = core.device.createPipelineLayout(&gpu.PipelineLayout.Descriptor.init(.{
+        .bind_group_layouts = &[_]*gpu.BindGroupLayout{bind_group_layout},
+    }));
     defer pipeline_layout.release();
 
     const pipeline_descriptor = gpu.RenderPipeline.Descriptor{
         .label = "Main Pipeline",
         .layout = pipeline_layout,
-        .vertex = vertex_pipeline_state,
-        .primitive = primitive_pipeline_state,
-        .depth_stencil = &depth_stencil_state,
-        .multisample = multi_sample_state,
-        .fragment = &fragment_pipeline_state,
+        .vertex = gpu.VertexState.init(.{
+            .module = shader_module,
+            .entry_point = "vertex_main",
+            .buffers = &.{gpu.VertexBufferLayout.init(.{
+                .array_stride = @sizeOf(VertexData),
+                .step_mode = .vertex,
+                .attributes = &[_]gpu.VertexAttribute{
+                    .{ .format = .float32x3, .shader_location = 0, .offset = 0 },
+                    .{ .format = .float32x3, .shader_location = 1, .offset = @sizeOf(primitives.F32x3) },
+                },
+            })},
+        }),
+        .primitive = gpu.PrimitiveState{
+            .topology = .triangle_list,
+            .front_face = .ccw,
+            .cull_mode = .back,
+        },
+        .depth_stencil = &gpu.DepthStencilState{
+            .format = .depth24_plus,
+            .depth_write_enabled = .true,
+            .depth_compare = .less,
+        },
+        .multisample = gpu.MultisampleState{
+            .count = SAMPLE_COUNT,
+            .mask = 0xFFFFFFFF,
+            .alpha_to_coverage_enabled = .false,
+        },
+        .fragment = &gpu.FragmentState.init(.{
+            .module = shader_module,
+            .entry_point = "frag_main",
+            .targets = &.{gpu.ColorTargetState{
+                .format = core.descriptor.format,
+                .blend = &gpu.BlendState{
+                    .color = gpu.BlendComponent{
+                        .operation = .add,
+                        .src_factor = .src_alpha,
+                        .dst_factor = .one_minus_src_alpha,
+                    },
+                    .alpha = gpu.BlendComponent{
+                        .operation = .add,
+                        .src_factor = .zero,
+                        .dst_factor = .one,
+                    },
+                },
+                .write_mask = gpu.ColorWriteMaskFlags.all,
+            }},
+        }),
     };
 
     return core.device.createRenderPipeline(&pipeline_descriptor);
 }
 
-fn createDepthTexture() void {
+fn createTexture() void {
     color_texture = core.device.createTexture(&gpu.Texture.Descriptor{
         .usage = .{ .render_attachment = true },
         .size = .{
@@ -163,7 +146,6 @@ fn createDepthTexture() void {
             .depth_or_array_layers = 1,
         },
         .format = core.descriptor.format,
-        // .format = .rgba8_unorm,
         .sample_count = SAMPLE_COUNT,
     });
 
@@ -229,7 +211,7 @@ pub fn init(allocator: std.mem.Allocator, timer: core.Timer) !void {
 
         pipeline = createPipeline(shader, bind_group_layout);
     }
-    createDepthTexture();
+    createTexture();
 }
 
 pub fn deinit() void {
@@ -254,7 +236,7 @@ pub fn update() void {
                 depth_texture_view.release();
                 color_texture.release();
                 color_texture_view.release();
-                createDepthTexture();
+                createTexture();
             },
             .close => return,
             else => {},
