@@ -15,11 +15,15 @@ pub fn build(b: *std.Build) !void {
 
     for ([_]struct { name: []const u8 }{
         .{ .name = "simple-triangle" },
+        .{ .name = "simple-triangle-msaa" },
+        .{ .name = "simple-circle" },
+        .{ .name = "simple-circle-msaa" },
         .{ .name = "0-draw-geometry" },
         .{ .name = "1-draw-grid" },
         .{ .name = "2-colorful-grid" },
         .{ .name = "3-manage-cell-state" },
         .{ .name = "4-game-of-life" },
+        .{ .name = "sdf-2d-circle" },
     }) |example| {
         const app = try mach.CoreApp.init(b, mach_dep.builder, .{
             .name = "mach-from-scratch",
@@ -28,10 +32,11 @@ pub fn build(b: *std.Build) !void {
             .optimize = optimize,
             .deps = &[_]std.Build.Module.Import{},
         });
+
         if (b.args) |args| app.run.addArgs(args);
         const exe = b.addExecutable(.{
             .name = example.name,
-            .root_source_file = .{ .path = b.fmt("src/{s}/main.zig", .{example.name}) },
+            .root_source_file = b.path(b.fmt("src/{s}/main.zig", .{example.name})),
             .target = target,
             .optimize = optimize,
         });

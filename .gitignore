@@ -11,6 +11,7 @@
 # OS files
 Thumbs.db
 .DS_Store
+.zig-cache
 
 .env
 /zig-cache
