@@ -25,8 +25,18 @@ pub fn createCirclePrimitive(allocator: std.mem.Allocator, vertices: u32, radius
 
     var x: u32 = 0;
     const angle = 2 * PI / @as(f32, @floatFromInt(vertices));
+    // var prng = std.rand.DefaultPrng.init(blk: {
+    //     var seed: u64 = undefined;
+    //     try std.posix.getrandom(std.mem.asBytes(&seed));
+    //     break :blk seed;
+    // });
+    // const rand = prng.random();
     while (x < vertices) : (x += 1) {
+        // var ran = rand.float(f32);
+        // ran = 0.95 + 0.05 * ran;
         const x_f = @as(f32, @floatFromInt(x));
+        // const pos_x = radius * zmath.cos(angle * x_f) * ran;
+        // const pos_y = radius * zmath.sin(angle * x_f) * ran;
         const pos_x = radius * zmath.cos(angle * x_f);
         const pos_y = radius * zmath.sin(angle * x_f);
 

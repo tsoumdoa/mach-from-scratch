@@ -27,8 +27,8 @@ const PrimitiveRenderData = struct {
     index_count: u32,
 };
 
-const UniformBufferObject = struct {
-    mvp_matrix: zm.Mat,
+const UniformBufferObject = extern struct {
+    screen_size: @Vector(2, f32),
 };
 
 var uniform_buffer: *gpu.Buffer = undefined;
@@ -256,8 +256,11 @@ pub fn update() void {
         .depth_stencil_attachment = &depth_stencil_attachment,
     });
 
+    const width = @as(f32, @floatFromInt(core.size().width));
+    const height = @as(f32, @floatFromInt(core.size().height));
+
     const ubo = UniformBufferObject{
-        .mvp_matrix = zm.identity(),
+        .screen_size = .{ width, height },
     };
     encoder.writeBuffer(uniform_buffer, 0, &[_]UniformBufferObject{ubo});
 
