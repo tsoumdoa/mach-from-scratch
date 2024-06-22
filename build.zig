@@ -25,6 +25,7 @@ pub fn build(b: *std.Build) !void {
         .{ .name = "4-game-of-life" },
         .{ .name = "sdf-2d-circle" },
         .{ .name = "wobbly-circle" },
+        .{ .name = "wobbly-circle-line" },
     }) |example| {
         const app = try mach.CoreApp.init(b, mach_dep.builder, .{
             .name = "mach-from-scratch",
